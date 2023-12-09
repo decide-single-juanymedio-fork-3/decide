@@ -10,7 +10,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
 
-from .models import Census
+from .models import Census, CensusGroup
 from base import mods
 from base.tests import BaseTestCase
 from datetime import datetime
@@ -81,6 +81,79 @@ class CensusTestCase(BaseTestCase):
         response = self.client.delete('/census/{}/'.format(1), data, format='json')
         self.assertEqual(response.status_code, 204)
         self.assertEqual(0, Census.objects.count())
+
+
+class CensusGroupTests(BaseTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.user1 = User.objects.create_user(username='user1', password='password1')
+        self.user2 = User.objects.create_user(username='user2', password='password2')
+        self.censusGroup = CensusGroup(groupName = 'Group')
+        self.censusGroup.save()
+
+    def tearDown(self):
+        super().tearDown()
+        self.censusGroup = None
+
+    def test_add_users_to_group(self):
+        self.censusGroup.voters.add(self.user1, self.user2)
+        self.censusGroup.save()
+        self.assertEqual(self.censusGroup.voters.count(), 2)
+
+
+    def test_list_permissions(self):
+        response = self.client.get('/census/censusgroup/list/', format='json')
+        self.assertEqual(response.status_code, 401)
+        self.login(user='noadmin')
+        response = self.client.get('/census/censusgroup/list/', format='json')
+        self.assertEqual(response.status_code, 403)
+        self.login(user='admin')
+        response = self.client.get('/census/censusgroup/list/', format='json')
+        self.assertEqual(response.status_code, 200)
+
+    def test_detail_permissions(self):
+        id = self.censusGroup.id
+        response = self.client.get('/census/censusgroup/detail/{}/'.format(id), format='json')
+        self.assertEqual(response.status_code, 401)
+        self.login(user='noadmin')
+        response = self.client.get('/census/censusgroup/detail/{}/'.format(id), format='json')
+        self.assertEqual(response.status_code, 403)
+        self.login(user='admin')
+        response = self.client.get('/census/censusgroup/detail/{}/'.format(id), format='json')
+        self.assertEqual(response.status_code, 200)
+    
+    def test_detail_permissions(self):
+        data = {
+            "groupName": "Test Census Group",
+            "voters": [self.user1.id, self.user2.id]  
+        }
+        response = self.client.post('/census/censusgroup/create/', data, format='json')
+        self.assertEqual(response.status_code, 401)
+        self.login(user='noadmin')
+        response = self.client.post('/census/censusgroup/create/', data, format='json')
+        self.assertEqual(response.status_code, 403)
+        self.login(user='admin')
+        response = self.client.post('/census/censusgroup/create/', data, format='json')
+        self.assertEqual(response.status_code, 201)
+
+    def test_create_group(self):
+        data = {
+            "groupName": "Test Census Group",
+            "voters": [self.user1.id, self.user2.id]  
+        }
+        self.login(user='admin')
+        response = self.client.post('/census/censusgroup/create/', data, format='json')
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(CensusGroup.objects.count(), 2)
+    
+    def test_apply_census(self):
+        self.censusGroup.voters.add(self.user1, self.user2)
+        self.censusGroup.voting_id = 1
+        self.censusGroup.save()
+        self.censusGroup.applyCensus()
+        censuses_count = Census.objects.filter(voting_id=1).count()
+        self.assertEqual(censuses_count, 2)
 
 
 class CensusTest(StaticLiveServerTestCase):
@@ -165,4 +238,3 @@ class CensusTest(StaticLiveServerTestCase):
         self.assertTrue(self.cleaner.find_element_by_xpath('/html/body/div/div[3]/div/div[1]/div/form/div/p').text == 'Please correct the errors below.')
         self.assertTrue(self.cleaner.current_url == self.live_server_url+"/admin/census/census/add")
 
-#def CensusGroupTests():

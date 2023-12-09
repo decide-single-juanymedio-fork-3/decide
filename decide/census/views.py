@@ -11,7 +11,8 @@ from rest_framework.status import (
 )
 
 from base.perms import UserIsStaff
-from .models import Census
+from .models import Census, CensusGroup
+from .serializers import CensusGroupSerializer
 
 
 class CensusCreate(generics.ListCreateAPIView):
@@ -49,3 +50,18 @@ class CensusDetail(generics.RetrieveDestroyAPIView):
         except ObjectDoesNotExist:
             return Response('Invalid voter', status=ST_401)
         return Response('Valid voter')
+
+
+class CensusGroupCreate(generics.CreateAPIView):
+    permission_classes = (UserIsStaff,)
+    serializer_class = CensusGroupSerializer
+
+class CensusGroupList(generics.ListAPIView):
+    permission_classes = (UserIsStaff,)
+    serializer_class = CensusGroupSerializer
+    queryset = CensusGroup.objects.all()
+
+class CensusGroupDetail(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = (UserIsStaff,)
+    serializer_class = CensusGroupSerializer
+    queryset = CensusGroup.objects.all()
