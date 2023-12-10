@@ -113,17 +113,16 @@ class CensusGroupTests(BaseTestCase):
         self.assertEqual(response.status_code, 200)
 
     def test_detail_permissions(self):
-        id = self.censusGroup.id
-        response = self.client.get('/census/censusgroup/detail/{}/'.format(id), format='json')
+        response = self.client.get('/census/censusgroup/detail/{}/'.format(self.censusGroup.id), format='json')
         self.assertEqual(response.status_code, 401)
         self.login(user='noadmin')
-        response = self.client.get('/census/censusgroup/detail/{}/'.format(id), format='json')
+        response = self.client.get('/census/censusgroup/detail/{}/'.format(self.censusGroup.id), format='json')
         self.assertEqual(response.status_code, 403)
         self.login(user='admin')
-        response = self.client.get('/census/censusgroup/detail/{}/'.format(id), format='json')
+        response = self.client.get('/census/censusgroup/detail/{}/'.format(self.censusGroup.id), format='json')
         self.assertEqual(response.status_code, 200)
     
-    def test_detail_permissions(self):
+    def test_create_permissions(self):
         data = {
             "groupName": "Test Census Group",
             "voters": [self.user1.id, self.user2.id]  
