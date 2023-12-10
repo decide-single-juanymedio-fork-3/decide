@@ -5,6 +5,10 @@ on:
     branches:
       - develop
       - master
+  pull_request:
+    branches:
+      - develop
+      - master
 
 jobs:
   build:
@@ -18,9 +22,9 @@ jobs:
       postgres:
         image: postgres:11.18-bullseye
         env:
-          POSTGRES_USER: decide
-          POSTGRES_PASSWORD: decide
-          POSTGRES_DB: decide
+          POSTGRES_USER: decideuser
+          POSTGRES_PASSWORD: decidepass123
+          POSTGRES_DB: decidedb
         ports:
           - 5432:5432
         # needed because the postgres container does not provide a healthcheck
