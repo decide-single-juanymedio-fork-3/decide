@@ -36,7 +36,7 @@ class VotingView(generics.ListCreateAPIView):
                 return Response({}, status=status.HTTP_400_BAD_REQUEST)
 
         question = Question(desc=request.data.get('question'))
-        question_type = question.question_type()
+        question_type = Question(desc=request.data.get('question_type'))
         question.save()
         if question_type == 'YN':
             yes_no_question(question)
