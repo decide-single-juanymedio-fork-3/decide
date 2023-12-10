@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   buildTest:
-    uses: decide-single-juanymedio-fork-3/decide/.github/workflows/django.yml@main
+    uses: decide-single-juanymedio-fork-3/decide/.github/workflows/django.yml@master
     secrets:
       CODACY_PROJECT_TOKEN: ${{secrets.CODACY_PROJECT_TOKEN}}
 
