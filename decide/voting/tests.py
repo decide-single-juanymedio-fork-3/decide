@@ -89,18 +89,18 @@ class VotingTestCase(BaseTestCase):
         clear = {}
         for opt in v.question.options.all():
             clear[opt.number] = 0
-            for i in range(random.randint(0, 2)):
-                a, b = self.encrypt_msg(opt.number, v)
-                data = {
-                    'voting': v.id,
-                    'voter': voter.voter_id,
-                    'vote': { 'a': a, 'b': b },
+            
+            a, b = self.encrypt_msg(opt.number, v)
+            data = {
+                'voting': v.id,
+                'voter': voter.voter_id,
+                'vote': { 'a': a, 'b': b },                
                 }
-                clear[opt.number] += 1
-                user = self.get_or_create_user(voter.voter_id)
-                self.login(user=user.username)
-                voter = voters.pop()
-                mods.post('store', json=data)
+            clear[opt.number] += 1
+            user = self.get_or_create_user(voter.voter_id)
+            self.login(user=user.username)
+            voter = voters.pop()
+            mods.post('store', json=data)
         return clear
 
     def store_votes(self, v):

@@ -34,9 +34,23 @@ class VotingView(generics.ListCreateAPIView):
         for data in ['name', 'desc', 'question', 'question_opt', 'question_type']:
             if not data in request.data:
                 return Response({}, status=status.HTTP_400_BAD_REQUEST)
+        question_type_mapping = {
+            'Yes/No': 'YN',
+            'Multiple Choice': 'MCQ',
+            # Add more mappings if needed
+        }
 
-        question = Question(desc=request.data.get('question'))
-        question_type = Question(desc=request.data.get('question_type'))
+        # Get the form input value for 'question_type'
+        form_question_type = request.data.get('question_type')
+
+        # Map form value to model choice
+        question_type = question_type_mapping.get(form_question_type)
+
+        # Check if the mapped value is valid
+        if question_type not in dict(Question.question_type_choices):
+            return Response({'error': 'Invalid question_type'}, status=status.HTTP_400_BAD_REQUEST)
+
+        question = Question(desc=request.data.get('question'), question_type = question_type)
         question.save()
         if question_type == 'YN':
             yes_no_question(question)
