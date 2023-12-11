@@ -39,6 +39,18 @@ class VotingTestCase(BaseTestCase):
         k.k = ElGamal.construct((p, g, y))
         return k.encrypt(msg)
 
+    def binary_voting(self):
+        q = Question(desc='test question', question_type='YN')
+        q.save()
+        v = Voting(name='test voting', question=q)
+        v.save()
+
+        a, _ = Auth.objects.get_or_create(url=settings.BASEURL,
+                                          defaults={'me': True, 'name': 'test auth'})
+        a.save()
+        v.auths.add(a)
+
+        return v
     def create_voting(self):
         q = Question(desc='test question')
         q.save()
@@ -69,6 +81,27 @@ class VotingTestCase(BaseTestCase):
         user.set_password('qwerty')
         user.save()
         return user
+
+    def store_votes_2(self,v):
+        voters = list(Census.objects.filter(voting_id=v.id))
+        voter = voters.pop()
+
+        clear = {}
+        for opt in v.question.options.all():
+            clear[opt.number] = 0
+            
+            a, b = self.encrypt_msg(opt.number, v)
+            data = {
+                'voting': v.id,
+                'voter': voter.voter_id,
+                'vote': { 'a': a, 'b': b },                
+                }
+            clear[opt.number] += 1
+            user = self.get_or_create_user(voter.voter_id)
+            self.login(user=user.username)
+            voter = voters.pop()
+            mods.post('store', json=data)
+        return clear
 
     def store_votes(self, v):
         voters = list(Census.objects.filter(voting_id=v.id))
@@ -114,6 +147,44 @@ class VotingTestCase(BaseTestCase):
         for q in v.postproc:
             self.assertEqual(tally.get(q["number"], 0), q["votes"])
 
+    def test_complete__binary_voting(self):
+        v = self.binary_voting()
+        self.create_voters(v)
+
+        v.create_pubkey()
+        v.start_date = timezone.now()
+        v.save()
+
+        clear = self.store_votes_2(v)
+
+        self.login()  # set token
+        v.tally_votes(self.token)
+
+        tally = v.tally
+        tally.sort()
+        tally = {k: len(list(x)) for k, x in itertools.groupby(tally)}
+
+        for q in v.question.options.all():
+            self.assertEqual(tally.get(q.number, 0), clear.get(q.number, 0))
+
+        for q in v.postproc:
+            self.assertEqual(tally.get(q["number"], 0), q["votes"])
+
+    def test_yes_no_options(self):
+        # Crear una votación de tipo YES/NO
+        v = self.binary_voting()
+        v.create_pubkey()
+        v.start_date = timezone.now()
+        v.save()
+
+        # Verificar que las opciones sean YES y NO
+        options = v.question.options.all()
+        self.assertEqual(len(options), 2)
+
+        option_texts = [opt.option for opt in options]
+        self.assertIn("Yes", option_texts)
+        self.assertIn("No", option_texts)
+
     def test_create_voting_from_api(self):
         data = {'name': 'Example'}
         response = self.client.post('/voting/', data, format='json')
@@ -133,7 +204,8 @@ class VotingTestCase(BaseTestCase):
             'name': 'Example',
             'desc': 'Description example',
             'question': 'I want a ',
-            'question_opt': ['cat', 'dog', 'horse']
+            'question_opt': ['cat', 'dog', 'horse'],
+            'question_type': 'Multiple Choice'
         }
 
         response = self.client.post('/voting/', data, format='json')
@@ -361,3 +433,53 @@ class QuestionsTests(StaticLiveServerTestCase):
 
         self.assertTrue(self.cleaner.find_element_by_xpath('/html/body/div/div[3]/div/div[1]/div/form/div/p').text == 'Please correct the errors below.')
         self.assertTrue(self.cleaner.current_url == self.live_server_url+"/admin/voting/question/add/")
+
+class BinaryQuestionTest(StaticLiveServerTestCase):
+
+    def setUp(self):
+        #Load base test functionality for decide
+        self.base = BaseTestCase()
+        self.base.setUp()
+
+        options = webdriver.ChromeOptions()
+        options.headless = True
+        self.driver = webdriver.Chrome(options=options)
+
+        super().setUp()
+
+    def tearDown(self):
+        super().tearDown()
+        self.driver.quit()
+
+        self.base.tearDown()
+
+
+    def createBinaryQuestionSuccess(self):
+        self.cleaner.get(self.live_server_url+"/admin/login/?next=/admin/")
+        self.cleaner.set_window_size(1280, 720)
+
+        self.cleaner.find_element(By.ID, "id_username").click()
+        self.cleaner.find_element(By.ID, "id_username").send_keys("decide")
+
+        self.cleaner.find_element(By.ID, "id_password").click()
+        self.cleaner.find_element(By.ID, "id_password").send_keys("decide")
+
+        self.cleaner.find_element(By.ID, "id_password").send_keys("Keys.ENTER")
+
+        self.cleaner.get(self.live_server_url+"/admin/voting/question/add/")
+        
+        self.cleaner.find_element(By.ID, "id_desc").click()
+        self.cleaner.find_element(By.ID, "id_desc").send_keys('Test')
+        self.cleaner.find_element(By.ID, "id_question-type").send_keys('Yes/No')
+        self.cleaner.find_element(By.NAME, "_save").click()
+
+        self.assertTrue(self.cleaner.current_url == self.live_server_url+"/admin/voting/question/")
+        
+        first_question_link = self.cleaner.find_element(By.XPATH, "//table[@id='result_list']/tbody/tr[1]/th/a")
+        first_question_link.click()
+
+        option_one_text = self.cleaner.find_element(By.ID, "id_options-1-option").text
+        option_two_text = self.cleaner.find_element(By.ID, "id_options-2-option").text
+
+        self.assertEqual(option_one_text, 'Yes')
+        self.assertEqual(option_two_text, 'No')

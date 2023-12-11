@@ -9,9 +9,21 @@ from base.models import Auth, Key
 
 class Question(models.Model):
     desc = models.TextField()
+    question_type_choices = [
+        ('MCQ', 'Multiple Choice'),
+        ('YN', 'Yes/No'),
+    ]
+
+    question_type = models.CharField(max_length=3, choices=question_type_choices, default='MCQ')
 
     def __str__(self):
         return self.desc
+
+    def save(self):
+        super().save()
+        if self.question_type=='YN':
+            import voting.views
+            voting.views.yes_no_question(self)
 
 
 class QuestionOption(models.Model):
