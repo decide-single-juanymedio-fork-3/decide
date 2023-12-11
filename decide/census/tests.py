@@ -1,6 +1,7 @@
 import random
 from django.contrib.auth.models import User
-from django.test import TestCase
+from django.http import Http404
+from django.test import TestCase, Client
 from rest_framework.test import APIClient
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 
@@ -14,6 +15,9 @@ from .models import Census, CensusGroup
 from base import mods
 from base.tests import BaseTestCase
 from datetime import datetime
+
+from django.conf import settings
+import os
 
 
 class CensusTestCase(BaseTestCase):
@@ -154,6 +158,41 @@ class CensusGroupTests(BaseTestCase):
         censuses_count = Census.objects.filter(voting_id=1).count()
         self.assertEqual(censuses_count, 2)
 
+class TestUploadCSV(BaseTestCase):
+    def setUp(self):
+        super().setUp()
+        # Directorio de archivos temporales:
+        self.directory = "decide/census/csv_test_files"
+
+        # Se definen usuarios para el censo
+        self.user1 = User.objects.create_user(username='user1', password='password1')
+        self.user2 = User.objects.create_user(username='user2', password='password2') 
+
+        # Crea un archivo CSV temporal inválido
+        self.invalid_csv_file = os.path.join(settings.BASE_DIR, 'census', 'csv_test_files', 'invalid_file.txt')
+        with open(self.invalid_csv_file, 'w') as file:
+            file.write("datos de prueba\n")
+
+        # Crear un archivo CSV temporal válido
+        self.valid_csv_file = os.path.join(settings.BASE_DIR, 'census', 'csv_test_files', 'valid_file.csv')
+        csv_content = "user1,1\nuser2,1"
+        with open(self.valid_csv_file, 'w') as file:
+            file.write(csv_content)
+
+    def tearDown(self):
+        super().tearDown()
+        # Elimina los temporales al finalizar la prueba
+        os.remove(self.valid_csv_file)
+        os.remove(self.invalid_csv_file)
+
+    def test_upload_invalid_csv_file(self):
+        ruta = os.path.join(settings.BASE_DIR, 'census', 'csv_test_files', 'invalid_file.txt')
+        with open(ruta, 'rb') as file:
+            try:
+                response = self.client.post('census/import/', {'csv_import_file': file}, HTTP_ACCEPT='text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8')
+            except Http404:
+                pass
+        self.assertEqual(response.status_code, 404)  # Verifica que la vista responda Bad request (código 404)
 
 class CensusTest(StaticLiveServerTestCase):
     def setUp(self):

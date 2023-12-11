@@ -1,5 +1,6 @@
 from django.db.utils import IntegrityError
 from django.core.exceptions import ObjectDoesNotExist
+from django.http import HttpResponseBadRequest
 from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework.status import (
@@ -16,7 +17,6 @@ from .serializers import CensusGroupSerializer
 
 from django.contrib.auth.models import User
 from django.shortcuts import render
-from django.http import HttpResponse
 from django.contrib import messages
 import io
 import csv
@@ -80,6 +80,8 @@ def import_census_csv(request):
 
         if not csv_file.name.endswith('.csv'):
             messages.error(request, 'El archivo seleccionado no es un archivo CSV válido.')
+            return HttpResponseBadRequest('El archivo seleccionado no es un archivo CSV válido.')
+
         else:
             data_set = csv_file.read().decode('UTF-8')
             io_string = io.StringIO(data_set)
