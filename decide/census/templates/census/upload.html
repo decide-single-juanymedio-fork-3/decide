@@ -1,0 +1,36 @@
+{% load i18n static %}
+
+{% block extrahead %}
+    <link type="text/css" rel="stylesheet"
+         href="https://unpkg.com/bootstrap/dist/css/bootstrap.min.css" />
+    <link href="https://getbootstrap.com/docs/5.2/assets/css/docs.css" rel="stylesheet">
+    <link type="text/css" rel="stylesheet" href="{% static "census/style.css" %}" />
+{% endblock %}
+
+{% block  contenido %}
+{% if messages %}
+    {% for message in messages %}
+        <div class="alert alert-danger" role="alert">
+            {{ message }}
+        </div>
+    {% endfor %}
+{% endif %}
+<div class="container d-flex justify-content-center align-items-center" style="height: 50vh;">
+    <div class="row">
+        <form method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="form-group">
+                <label style="margin-bottom: 10px;" for="name">Seleccione el archivo CSV:</label>
+                <input type="file" class="form-control" id="csv_import_file" name="csv_import_file" required="True">
+            <div>
+            <div class="form-group">
+                <button style="margin-top: 10px;" type="submit" class="btn btn-primary">Subir Archivo</button>
+            </div>    
+        </form>
+    
+    </div>
+
+</div>
+
+
+{% endblock %}

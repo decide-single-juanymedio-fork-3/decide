@@ -7,4 +7,5 @@ urlpatterns = [
     path('censusgroup/create/', views.CensusGroupCreate.as_view(), name='censusgroup_create'),
     path('censusgroup/list/', views.CensusGroupList.as_view(), name='censusgroup_list'),
     path('censusgroup/detail/<int:pk>/', views.CensusGroupDetail.as_view(), name='censusgroup_detail'),
+    path('import/', views.import_census_csv, name='import_census'),
 ]

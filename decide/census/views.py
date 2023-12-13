@@ -14,6 +14,13 @@ from base.perms import UserIsStaff
 from .models import Census, CensusGroup
 from .serializers import CensusGroupSerializer
 
+from django.contrib.auth.models import User
+from django.shortcuts import render
+from django.contrib import messages
+import io
+import csv
+
+
 
 class CensusCreate(generics.ListCreateAPIView):
     permission_classes = (UserIsStaff,)
@@ -65,3 +72,28 @@ class CensusGroupDetail(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = (UserIsStaff,)
     serializer_class = CensusGroupSerializer
     queryset = CensusGroup.objects.all()
+
+def import_census_csv(request):
+    if request.method == 'POST' and request.FILES['csv_import_file']:
+        csv_file = request.FILES['csv_import_file']
+
+        if not csv_file.name.endswith('.csv'):
+            messages.error(request, 'El archivo seleccionado no es un archivo CSV válido.')
+            return render(request, 'census/upload.html', status=400)
+
+        else:
+            data_set = csv_file.read().decode('UTF-8')
+            io_string = io.StringIO(data_set)
+            reader = csv.reader(io_string)
+            rows = 0
+            for row in reader:
+                if len(row) >= 2:
+                    username = row[0].strip()
+                    voting_id = row[1].strip()
+                    voter = User.objects.get(username=username)
+                    existing_census = Census.objects.filter(voter_id=voter.id, voting_id=voting_id)
+                    if not existing_census.exists():
+                        Census.objects.create(voting_id=voting_id, voter_id=voter.id)
+                    rows += 1
+            messages.success(request, 'Se han añadido ' + str(rows) + ' usuarios al censo.')          
+    return render(request, 'census/upload.html', status=201)
