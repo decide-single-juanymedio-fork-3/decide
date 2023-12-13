@@ -154,29 +154,15 @@ class CensusGroupTests(BaseTestCase):
 class TestUploadCSV(BaseTestCase):
     def setUp(self):
         super().setUp()
-        # Directorio de archivos temporales:
-        self.directory = "decide/census/csv_test_files"
 
         # Se definen usuarios para el censo
         self.user1 = User.objects.create_user(username='user1', password='password1')
         self.user2 = User.objects.create_user(username='user2', password='password2') 
 
-        # Crea un archivo CSV temporal inválido
-        self.invalid_csv_file = os.path.join(settings.BASE_DIR, 'census', 'csv_test_files', 'invalid_file.txt')
-        with open(self.invalid_csv_file, 'w') as file:
-            file.write("datos de prueba\n")
-
-        # Crear un archivo CSV temporal válido
-        self.valid_csv_file = os.path.join(settings.BASE_DIR, 'census', 'csv_test_files', 'valid_file.csv')
-        csv_content = "user1,1\nuser2,1"
-        with open(self.valid_csv_file, 'w') as file:
-            file.write(csv_content)
-
     def tearDown(self):
         super().tearDown()
-        # Elimina los temporales al finalizar la prueba
-        os.remove(self.valid_csv_file)
-        os.remove(self.invalid_csv_file)
+        self.user1 = None
+        self.user2 = None
 
     def test_upload_invalid_csv_file(self):
         ruta = os.path.join(settings.BASE_DIR, 'census', 'csv_test_files', 'invalid_file.txt')
@@ -195,6 +181,7 @@ class TestUploadCSV(BaseTestCase):
             except Http404:
                 pass
         self.assertEqual(response.status_code, 201)  # Verifica que la vista responda Objeto creado (código 201)
+        self.assertEqual(Census.objects.count(), 2)  # Verifica que existen dos censos creados
 
 class CensusTest(StaticLiveServerTestCase):
     def setUp(self):
