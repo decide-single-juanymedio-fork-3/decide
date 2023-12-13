@@ -1,18 +1,11 @@
-import random
 from django.contrib.auth.models import User
 from django.http import Http404
-from django.test import TestCase, Client
-from rest_framework.test import APIClient
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 
 from selenium import webdriver
-from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.keys import Keys
 
 from .models import Census, CensusGroup
-from base import mods
 from base.tests import BaseTestCase
 from datetime import datetime
 
@@ -189,10 +182,19 @@ class TestUploadCSV(BaseTestCase):
         ruta = os.path.join(settings.BASE_DIR, 'census', 'csv_test_files', 'invalid_file.txt')
         with open(ruta, 'rb') as file:
             try:
-                response = self.client.post('census/import/', {'csv_import_file': file}, HTTP_ACCEPT='text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8')
+                response = self.client.post('/census/import/', {'csv_import_file': file})
             except Http404:
                 pass
-        self.assertEqual(response.status_code, 404)  # Verifica que la vista responda Bad request (código 404)
+        self.assertEqual(response.status_code, 400)  # Verifica que la vista responda Bad request (código 400)
+    
+    def test_upload_valid_csv_file(self):
+        ruta = os.path.join(settings.BASE_DIR, 'census', 'csv_test_files', 'valid_file.csv')
+        with open(ruta, 'rb') as file:
+            try:
+                response = self.client.post('/census/import/', {'csv_import_file': file})
+            except Http404:
+                pass
+        self.assertEqual(response.status_code, 201)  # Verifica que la vista responda Objeto creado (código 201)
 
 class CensusTest(StaticLiveServerTestCase):
     def setUp(self):

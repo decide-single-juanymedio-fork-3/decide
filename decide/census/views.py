@@ -80,13 +80,13 @@ def import_census_csv(request):
 
         if not csv_file.name.endswith('.csv'):
             messages.error(request, 'El archivo seleccionado no es un archivo CSV válido.')
-            return HttpResponseBadRequest('El archivo seleccionado no es un archivo CSV válido.')
+            return render(request, 'census/upload.html', status=400)
 
         else:
             data_set = csv_file.read().decode('UTF-8')
             io_string = io.StringIO(data_set)
             reader = csv.reader(io_string)
-
+            rows = 0
             for row in reader:
                 if len(row) >= 2:
                     username = row[0].strip()
@@ -95,5 +95,6 @@ def import_census_csv(request):
                     existing_census = Census.objects.filter(voter_id=voter.id, voting_id=voting_id)
                     if not existing_census.exists():
                         Census.objects.create(voting_id=voting_id, voter_id=voter.id)
-                        
-    return render(request, 'census/upload.html')
+                    rows += 1
+            messages.success(request, 'Se han añadido ' + str(rows) + ' usuarios al censo.')          
+    return render(request, 'census/upload.html', status=201)
