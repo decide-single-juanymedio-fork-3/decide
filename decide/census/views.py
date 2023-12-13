@@ -1,6 +1,5 @@
 from django.db.utils import IntegrityError
 from django.core.exceptions import ObjectDoesNotExist
-from django.http import HttpResponseBadRequest
 from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework.status import (
