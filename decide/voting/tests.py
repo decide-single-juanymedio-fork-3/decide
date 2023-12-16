@@ -23,7 +23,6 @@ from mixnet.models import Auth
 from voting.models import Voting, Question, QuestionOption
 from datetime import datetime
 
-from django.urls import reverse
 
 class VotingTestCase(BaseTestCase):
 
