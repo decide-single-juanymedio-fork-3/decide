@@ -31,15 +31,33 @@ class VotingView(generics.ListCreateAPIView):
     def post(self, request, *args, **kwargs):
         self.permission_classes = (UserIsStaff,)
         self.check_permissions(request)
-        for data in ['name', 'desc', 'question', 'question_opt']:
+        for data in ['name', 'desc', 'question', 'question_opt', 'question_type']:
             if not data in request.data:
                 return Response({}, status=status.HTTP_400_BAD_REQUEST)
+        question_type_mapping = {
+            'Yes/No': 'YN',
+            'Multiple Choice': 'MCQ',
+            # Add more mappings if needed
+        }
 
-        question = Question(desc=request.data.get('question'))
+        # Get the form input value for 'question_type'
+        form_question_type = request.data.get('question_type')
+
+        # Map form value to model choice
+        question_type = question_type_mapping.get(form_question_type)
+
+        # Check if the mapped value is valid
+        if question_type not in dict(Question.question_type_choices):
+            return Response({'error': 'Invalid question_type'}, status=status.HTTP_400_BAD_REQUEST)
+
+        question = Question(desc=request.data.get('question'), question_type = question_type)
         question.save()
-        for idx, q_opt in enumerate(request.data.get('question_opt')):
-            opt = QuestionOption(question=question, option=q_opt, number=idx)
-            opt.save()
+        if question_type == 'YN':
+            yes_no_question(question)
+        else:
+            for idx, q_opt in enumerate(request.data.get('question_opt')):
+                opt = QuestionOption(question=question, option=q_opt, number=idx)
+                opt.save()
         voting = Voting(name=request.data.get('name'), desc=request.data.get('desc'),
                 question=question)
         voting.save()
@@ -101,3 +119,12 @@ class VotingUpdate(generics.RetrieveUpdateDestroyAPIView):
             msg = 'Action not found, try with start, stop or tally'
             st = status.HTTP_400_BAD_REQUEST
         return Response(msg, status=st)
+
+def yes_no_question(self):
+    options = QuestionOption.objects.all().filter(question=self)
+    for o in options:
+        o.delete()
+    option1 = QuestionOption(option='Yes',number=1, question=self)
+    option1.save()
+    option2 = QuestionOption(option='No',number=2, question=self)   
+    option2.save()

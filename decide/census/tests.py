@@ -1,19 +1,16 @@
-import random
 from django.contrib.auth.models import User
-from django.test import TestCase
-from rest_framework.test import APIClient
+from django.http import Http404
 from django.contrib.staticfiles.testing import StaticLiveServerTestCase
 
 from selenium import webdriver
-from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.keys import Keys
 
-from .models import Census
-from base import mods
+from .models import Census, CensusGroup
 from base.tests import BaseTestCase
 from datetime import datetime
+
+from django.conf import settings
+import os
 
 
 class CensusTestCase(BaseTestCase):
@@ -82,6 +79,109 @@ class CensusTestCase(BaseTestCase):
         self.assertEqual(response.status_code, 204)
         self.assertEqual(0, Census.objects.count())
 
+
+class CensusGroupTests(BaseTestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.user1 = User.objects.create_user(username='user1', password='password1')
+        self.user2 = User.objects.create_user(username='user2', password='password2')
+        self.censusGroup = CensusGroup(groupName = 'Group')
+        self.censusGroup.save()
+
+    def tearDown(self):
+        super().tearDown()
+        self.censusGroup = None
+
+    def test_add_users_to_group(self):
+        self.censusGroup.voters.add(self.user1, self.user2)
+        self.censusGroup.save()
+        self.assertEqual(self.censusGroup.voters.count(), 2)
+
+
+    def test_list_permissions(self):
+        response = self.client.get('/census/censusgroup/list/', format='json')
+        self.assertEqual(response.status_code, 401)
+        self.login(user='noadmin')
+        response = self.client.get('/census/censusgroup/list/', format='json')
+        self.assertEqual(response.status_code, 403)
+        self.login(user='admin')
+        response = self.client.get('/census/censusgroup/list/', format='json')
+        self.assertEqual(response.status_code, 200)
+
+    def test_detail_permissions(self):
+        response = self.client.get('/census/censusgroup/detail/{}/'.format(self.censusGroup.id), format='json')
+        self.assertEqual(response.status_code, 401)
+        self.login(user='noadmin')
+        response = self.client.get('/census/censusgroup/detail/{}/'.format(self.censusGroup.id), format='json')
+        self.assertEqual(response.status_code, 403)
+        self.login(user='admin')
+        response = self.client.get('/census/censusgroup/detail/{}/'.format(self.censusGroup.id), format='json')
+        self.assertEqual(response.status_code, 200)
+    
+    def test_create_permissions(self):
+        data = {
+            "groupName": "Test Census Group",
+            "voters": [self.user1.id, self.user2.id]  
+        }
+        response = self.client.post('/census/censusgroup/create/', data, format='json')
+        self.assertEqual(response.status_code, 401)
+        self.login(user='noadmin')
+        response = self.client.post('/census/censusgroup/create/', data, format='json')
+        self.assertEqual(response.status_code, 403)
+        self.login(user='admin')
+        response = self.client.post('/census/censusgroup/create/', data, format='json')
+        self.assertEqual(response.status_code, 201)
+
+    def test_create_group(self):
+        data = {
+            "groupName": "Test Census Group",
+            "voters": [self.user1.id, self.user2.id]  
+        }
+        self.login(user='admin')
+        response = self.client.post('/census/censusgroup/create/', data, format='json')
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(CensusGroup.objects.count(), 2)
+    
+    def test_apply_census(self):
+        self.censusGroup.voters.add(self.user1, self.user2)
+        self.censusGroup.voting_id = 1
+        self.censusGroup.save()
+        self.censusGroup.applyCensus()
+        censuses_count = Census.objects.filter(voting_id=1).count()
+        self.assertEqual(censuses_count, 2)
+
+class TestUploadCSV(BaseTestCase):
+    def setUp(self):
+        super().setUp()
+
+        # Se definen usuarios para el censo
+        self.user1 = User.objects.create_user(username='user1', password='password1')
+        self.user2 = User.objects.create_user(username='user2', password='password2') 
+
+    def tearDown(self):
+        super().tearDown()
+        self.user1 = None
+        self.user2 = None
+
+    def test_upload_invalid_csv_file(self):
+        ruta = os.path.join(settings.BASE_DIR, 'census', 'csv_test_files', 'invalid_file.txt')
+        with open(ruta, 'rb') as file:
+            try:
+                response = self.client.post('/census/import/', {'csv_import_file': file})
+            except Http404:
+                pass
+        self.assertEqual(response.status_code, 400)  # Verifica que la vista responda Bad request (código 400)
+    
+    def test_upload_valid_csv_file(self):
+        ruta = os.path.join(settings.BASE_DIR, 'census', 'csv_test_files', 'valid_file.csv')
+        with open(ruta, 'rb') as file:
+            try:
+                response = self.client.post('/census/import/', {'csv_import_file': file})
+            except Http404:
+                pass
+        self.assertEqual(response.status_code, 201)  # Verifica que la vista responda Objeto creado (código 201)
+        self.assertEqual(Census.objects.count(), 2)  # Verifica que existen dos censos creados
 
 class CensusTest(StaticLiveServerTestCase):
     def setUp(self):
@@ -164,3 +264,4 @@ class CensusTest(StaticLiveServerTestCase):
 
         self.assertTrue(self.cleaner.find_element_by_xpath('/html/body/div/div[3]/div/div[1]/div/form/div/p').text == 'Please correct the errors below.')
         self.assertTrue(self.cleaner.current_url == self.live_server_url+"/admin/census/census/add")
+
