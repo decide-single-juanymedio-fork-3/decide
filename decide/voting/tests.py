@@ -23,6 +23,7 @@ from mixnet.models import Auth
 from voting.models import Voting, Question, QuestionOption
 from datetime import datetime
 
+from django.urls import reverse
 
 class VotingTestCase(BaseTestCase):
 
@@ -147,7 +148,7 @@ class VotingTestCase(BaseTestCase):
         for q in v.postproc:
             self.assertEqual(tally.get(q["number"], 0), q["votes"])
 
-    def test_complete__binary_voting(self):
+    def test_complete_binary_voting(self):
         v = self.binary_voting()
         self.create_voters(v)
 
@@ -288,6 +289,52 @@ class VotingTestCase(BaseTestCase):
         response = self.client.put('/voting/{}/'.format(voting.pk), data, format='json')
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json(), 'Voting already tallied')
+
+class QuestionMCQUpdateTest(BaseTestCase):
+
+    def setUp(self):
+        super().setUp()
+        # Crea una pregunta MCQ con opciones
+        self.q = Question(desc='Pregunta test MCQ', question_type='MCQ')
+        self.q.save()
+
+        self.option1 = QuestionOption(option='Option 1', number=1, question=self.q)
+        self.option1.save()
+
+        self.option2 = QuestionOption(option='Option 2', number=2, question=self.q)
+        self.option2.save()
+
+    def test_change_question_type_to_yn(self):
+        self.q.question_type = 'YN'
+        self.q.save()
+        self.assertEqual(self.q.question_type, 'YN')
+        options = QuestionOption.objects.all().filter(question=self.q)
+        opt1 = options[0].option
+        opt2 = options[1].option
+        self.assertEqual(opt1, 'Yes')
+        self.assertEqual(opt2, 'No')
+
+    def test_change_question_type_to_MCQ(self):
+        self.q.question_type = 'MCQ'
+        self.q.save()
+
+        self.option3 = QuestionOption(option='Option 3', number=1, question=self.q)
+        self.option3.save()
+
+        self.assertEqual(self.q.question_type, 'MCQ')
+        options = QuestionOption.objects.all().filter(question=self.q)
+        opt3 = options[2].option
+        self.assertEqual(opt3, 'Option 3')
+            
+    def test_eliminate_options(self):
+        self.q.question_type = 'YN'
+        self.q.save()
+        self.assertEqual(self.q.question_type, 'YN')
+        options = QuestionOption.objects.all().filter(question=self.q)
+        self.assertEqual(len(options), 2)
+        
+
+
 
 class LogInSuccessTests(StaticLiveServerTestCase):
 
