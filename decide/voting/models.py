@@ -32,6 +32,10 @@ class QuestionOption(models.Model):
     option = models.TextField()
 
     def save(self):
+        if self.question.question_type == 'YN':
+            if self.option not in ['Yes', 'No']:
+                print("You should not add options to Yes or No questions.")
+                return
         if not self.number:
             self.number = self.question.options.count() + 2
         return super().save()
