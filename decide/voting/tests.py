@@ -303,7 +303,10 @@ class QuestionMCQUpdateTest(BaseTestCase):
         self.option2 = QuestionOption(option='Option 2', number=2, question=self.q)
         self.option2.save()
 
-    def test_change_question_type_to_yn(self):
+    def test_a_create_question_MCQ(self):
+        self.assertEqual(self.q.question_type, 'MCQ')
+
+    def test_b_change_question_type_to_yn(self):
         self.q.question_type = 'YN'
         self.q.save()
         self.assertEqual(self.q.question_type, 'YN')
@@ -313,15 +316,24 @@ class QuestionMCQUpdateTest(BaseTestCase):
         self.assertEqual(opt1, 'Yes')
         self.assertEqual(opt2, 'No')
 
+class QuestionYNUpdateTest(BaseTestCase):
+
+    def setUp(self):
+        # Crea una pregunta YN
+        self.q = Question(desc='Pregunta test YN', question_type='YN')
+        self.q.save()
+
+
     def test_change_question_type_to_MCQ(self):
         self.q.question_type = 'MCQ'
         self.q.save()
 
-        self.option3 = QuestionOption(option='Option 3', number=1, question=self.q)
+        self.option3 = QuestionOption(option='Option 3', number=3, question=self.q)
         self.option3.save()
 
         self.assertEqual(self.q.question_type, 'MCQ')
         options = QuestionOption.objects.all().filter(question=self.q)
+        print(options)
         opt3 = options[2].option
         self.assertEqual(opt3, 'Option 3')
             
@@ -331,6 +343,36 @@ class QuestionMCQUpdateTest(BaseTestCase):
         self.assertEqual(self.q.question_type, 'YN')
         options = QuestionOption.objects.all().filter(question=self.q)
         self.assertEqual(len(options), 2)
+    
+class add_too_many_yes_or_no_options(BaseTestCase):
+    def setUp(self):
+        super().setUp()
+        # Crea una pregunta YN añadiendo muchas opciones Yes, No.
+        self.q = Question(desc='Options duplicate YN', question_type='YN')
+        self.q.save()
+
+        self.option1 = QuestionOption(option='Yes', question=self.q)
+        self.option1.save()
+
+        self.option2 = QuestionOption(option='No', question=self.q)
+        self.option2.save()
+
+        self.option1 = QuestionOption(option='Yes', question=self.q)
+        self.option1.save()
+
+        self.option2 = QuestionOption(option='No', question=self.q)
+        self.option2.save()
+
+    def test_duplicate_options(self):
+
+        options = QuestionOption.objects.all().filter(question=self.q)
+        opt1 = options[0].option
+        opt2 = options[1].option
+        self.assertEqual(opt1, 'Yes')
+        self.assertEqual(opt2, 'No')
+        #Comprobar que solo hay dos opciones
+        self.assertEqual(len(options), 2)
+
         
 
 
@@ -516,7 +558,7 @@ class BinaryQuestionTest(StaticLiveServerTestCase):
         
         self.cleaner.find_element(By.ID, "id_desc").click()
         self.cleaner.find_element(By.ID, "id_desc").send_keys('Test')
-        self.cleaner.find_element(By.ID, "id_question-type").send_keys('Yes/No')
+        self.cleaner.find_element(By.ID, "id_question_type").send_keys('Yes/No')
         self.cleaner.find_element(By.NAME, "_save").click()
 
         self.assertTrue(self.cleaner.current_url == self.live_server_url+"/admin/voting/question/")
@@ -524,8 +566,8 @@ class BinaryQuestionTest(StaticLiveServerTestCase):
         first_question_link = self.cleaner.find_element(By.XPATH, "//table[@id='result_list']/tbody/tr[1]/th/a")
         first_question_link.click()
 
-        option_one_text = self.cleaner.find_element(By.ID, "id_options-1-option").text
-        option_two_text = self.cleaner.find_element(By.ID, "id_options-2-option").text
+        option_one_text = self.cleaner.find_element(By.ID, "id_options-0-option").text
+        option_two_text = self.cleaner.find_element(By.ID, "id_options-1-option").text
 
         self.assertEqual(option_one_text, 'Yes')
         self.assertEqual(option_two_text, 'No')

@@ -33,12 +33,16 @@ class QuestionOption(models.Model):
 
     def save(self):
         if self.question.question_type == 'YN':
-            if self.option not in ['Yes', 'No']:
+            if self.number not in [1, 2]:
                 print("You should not add options to Yes or No questions.")
                 return
-        if not self.number:
+            else:
+                return super().save()
+        elif not self.number:
             self.number = self.question.options.count() + 2
-        return super().save()
+            return super().save()
+        else:
+            return super().save()
 
     def __str__(self):
         return '{} ({})'.format(self.option, self.number)
