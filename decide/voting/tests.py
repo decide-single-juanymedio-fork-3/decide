@@ -316,10 +316,9 @@ class QuestionMCQUpdateTest(BaseTestCase):
         self.assertEqual(opt1, 'Yes')
         self.assertEqual(opt2, 'No')
 
-class QuestionMCQUpdateTest(BaseTestCase):
+class QuestionYNUpdateTest(BaseTestCase):
 
     def setUp(self):
-        super().setUp()
         # Crea una pregunta YN
         self.q = Question(desc='Pregunta test YN', question_type='YN')
         self.q.save()
@@ -348,7 +347,7 @@ class QuestionMCQUpdateTest(BaseTestCase):
 class add_too_many_yes_or_no_options(BaseTestCase):
     def setUp(self):
         super().setUp()
-        # Crea una pregunta YN añadiendo muchas opciones Yes, No. Test basado en experiencia
+        # Crea una pregunta YN añadiendo muchas opciones Yes, No.
         self.q = Question(desc='Options duplicate YN', question_type='YN')
         self.q.save()
 
